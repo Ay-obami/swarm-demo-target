@@ -19,7 +19,9 @@ pub fn reserve(stock: u32, reserved: u32, requests: &[u32]) -> Result<Vec<u32>, 
     let mut left = available(stock, reserved);
     let mut granted = Vec::with_capacity(requests.len());
     for &request in requests {
-        if request > left {
+        // BUG(PR-103): compares against TOTAL stock instead of what's left,
+        // so cumulative grants within one batch can oversell.
+        if request > stock {
             return Err(InventoryError::Oversell {
                 requested: request,
                 available: left,
