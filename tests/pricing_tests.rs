@@ -41,7 +41,14 @@ fn grant_never_exceeds_subtotal_even_without_cap() {
 }
 
 #[test]
+fn negative_fixed_is_clamped_to_zero() {
+    let o = order(0, -500, i64::MAX);
+    assert_eq!(discounts::total_discount_cents(&o, 10_000), 0);
+}
+
+#[test]
 fn percentage_rounds_half_to_even() {
+
     // 99c at 5% = 4.95c → banker's rounding gives 5c (q=49 odd, exact half).
     let o = order(5_000, 0, 10_000);
     assert_eq!(discounts::total_discount_cents(&o, 99), 50);

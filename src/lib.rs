@@ -10,3 +10,6 @@ pub mod inventory;
 pub mod models;
 pub mod pricing;
 pub mod report;
+pub mod shipping;
+pub mod tax;
+

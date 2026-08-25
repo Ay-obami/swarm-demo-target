@@ -20,6 +20,12 @@ fn first_impossible_request_fails_the_batch() {
 }
 
 #[test]
+fn grant_order_is_preserved() {
+    let granted = inventory::reserve(10, 0, &[5, 2]).unwrap();
+    assert_eq!(granted, vec![5, 2]);
+}
+
+#[test]
 fn exact_boundary_request_succeeds() {
     assert!(inventory::reserve(10, 4, &[6]).is_ok());
 }
