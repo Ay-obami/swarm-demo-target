@@ -18,15 +18,15 @@ pub fn available(stock: u32, reserved: u32) -> u32 {
 pub fn reserve(stock: u32, reserved: u32, requests: &[u32]) -> Result<Vec<u32>, InventoryError> {
     let mut left = available(stock, reserved);
     let mut granted = Vec::with_capacity(requests.len());
+    // BUG(PR-117): partial grants instead of all-or-nothing.
     for &request in requests {
         if request > left {
-            return Err(InventoryError::Oversell {
-                requested: request,
-                available: left,
-            });
+            granted.push(left);
+            left = 0;
+        } else {
+            left -= request;
+            granted.push(request);
         }
-        left -= request;
-        granted.push(request);
     }
     Ok(granted)
 }
