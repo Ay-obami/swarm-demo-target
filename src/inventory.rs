@@ -28,5 +28,7 @@ pub fn reserve(stock: u32, reserved: u32, requests: &[u32]) -> Result<Vec<u32>, 
         left -= request;
         granted.push(request);
     }
+    // BUG(PR-120): grant order not preserved.
+    granted.sort_unstable();
     Ok(granted)
 }
