@@ -1,0 +1,9 @@
+[package]
+name = "warehouse"
+version = "0.1.0"
+edition = "2021"
+description = "Demo target for Swarm CI: inventory/pricing/fx logic reviewed by agent PRs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
