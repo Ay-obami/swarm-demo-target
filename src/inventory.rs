@@ -10,7 +10,8 @@ pub enum InventoryError {
 }
 
 pub fn available(stock: u32, reserved: u32) -> u32 {
-    stock.saturating_sub(reserved)
+    // BUG(PR-115): arguments swapped.
+    reserved.saturating_sub(stock)
 }
 
 /// Reserve each request against REMAINING availability (stock minus already
