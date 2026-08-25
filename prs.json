@@ -1,0 +1,206 @@
+{
+  "repo_git": "https://github.com/Ay-obami/swarm-demo-target.git",
+  "prs": [
+    {
+      "label": "101",
+      "slug": "discount-cap",
+      "branch": "pr/101-discount-cap",
+      "title": "Discount stacking ignores the cap",
+      "description": "Stacked discounts ignore discount_cap_cents: subtotal 100.00 with 15% + 3.00 fixed grants 18.00 — the 5.00 cap must win.",
+      "file": "src/discounts.rs",
+      "find": "    let capped = raw.min(order.discount_cap_cents.max(0));\n    capped.min(subtotal_cents.max(0))",
+      "replace": "    // BUG(PR-101): cap is not enforced when stacking.\n    raw.min(subtotal_cents.max(0))"
+    },
+    {
+      "label": "102",
+      "slug": "fx-rounding",
+      "branch": "pr/102-fx-rounding",
+      "title": "FX conversion snaps to whole units",
+      "description": "convert() snaps results to whole units: convert(999, 12345) returns 1200 instead of 1233 — cent precision must be preserved.",
+      "file": "src/currency.rs",
+      "find": "pub fn convert(amount: u64, rate_bps: u64) -> u64 {\n    mul_bps_round_even(amount, rate_bps)\n}",
+      "replace": "pub fn convert(amount: u64, rate_bps: u64) -> u64 {\n    // BUG(PR-102): snapping to whole major units destroys cents precision.\n    let converted = mul_bps_round_even(amount, rate_bps);\n    (converted / 100) * 100\n}"
+    },
+    {
+      "label": "103",
+      "slug": "oversell-boundary",
+      "branch": "pr/103-oversell-boundary",
+      "title": "Batch reservation can oversell",
+      "description": "reserve() validates each request against TOTAL stock instead of remaining availability, so [3,3,5] on stock 10 / reserved 4 succeeds.",
+      "file": "src/inventory.rs",
+      "find": "        if request > left {",
+      "replace": "        // BUG(PR-103): compares against TOTAL stock, not what remains.\n        if request > stock {"
+    },
+    {
+      "label": "104",
+      "slug": "half-up-bps",
+      "branch": "pr/104-half-up-bps",
+      "title": "Basis-point rounding uses half-up",
+      "description": "mul_bps_round_even rounds exact halves UP instead of to the even neighbour (25c @50% gives 13, must be 12).",
+      "file": "src/currency.rs",
+      "find": "    let bump = r > 5_000 || (r == 5_000 && q % 2 == 1);",
+      "replace": "    let bump = r >= 5_000; // BUG(PR-104): half-up, not banker's."
+    },
+    {
+      "label": "105",
+      "slug": "truncate-always",
+      "branch": "pr/105-truncate-always",
+      "title": "Exact halves are truncated",
+      "description": "mul_bps_round_even drops every exact half (75c @50% gives 37, must be 38).",
+      "file": "src/currency.rs",
+      "find": "    let bump = r > 5_000 || (r == 5_000 && q % 2 == 1);",
+      "replace": "    let bump = false; // BUG(PR-105): always truncates exact halves."
+    },
+    {
+      "label": "106",
+      "slug": "convert-flat-fee",
+      "branch": "pr/106-convert-flat-fee",
+      "title": "Hidden flat FX fee",
+      "description": "convert() silently adds a 50c conversion fee: convert(10_000, 11250) returns 11300 instead of 11250.",
+      "file": "src/currency.rs",
+      "find": "pub fn convert(amount: u64, rate_bps: u64) -> u64 {\n    mul_bps_round_even(amount, rate_bps)\n}",
+      "replace": "pub fn convert(amount: u64, rate_bps: u64) -> u64 {\n    // BUG(PR-106): hidden flat conversion fee.\n    mul_bps_round_even(amount, rate_bps) + 50\n}"
+    },
+    {
+      "label": "107",
+      "slug": "qty-minus-one",
+      "branch": "pr/107-qty-minus-one",
+      "title": "Line total charges one unit too few",
+      "description": "line_total_cents charges qty-1 units: a line of 2 × 350c bills 350c instead of 700c.",
+      "file": "src/pricing.rs",
+      "find": "    item.unit_price_cents * item.qty as i64",
+      "replace": "    // BUG(PR-107): charges one unit too few.\n    item.unit_price_cents * (item.qty as i64 - 1)"
+    },
+    {
+      "label": "108",
+      "slug": "tax-on-gross",
+      "branch": "pr/108-tax-on-gross",
+      "title": "Tax computed on gross instead of net",
+      "description": "tax_cents compounds onto a naive tax (taxes the gross), inflating receipts: 105c @15% yields 18c of tax instead of 16c.",
+      "file": "src/tax.rs",
+      "find": "    let net = net_subtotal_cents.max(0) as u64;\n    mul_bps_round_even(net, rate_bps.max(0) as u64) as i64",
+      "replace": "    // BUG(PR-108): taxes GROSS (net + naive tax), not the net.\n    let net = net_subtotal_cents.max(0) as u64;\n    let naive = mul_bps_round_even(net, rate_bps.max(0) as u64);\n    mul_bps_round_even(net + naive, rate_bps.max(0) as u64) as i64"
+    },
+    {
+      "label": "109",
+      "slug": "tax-half-up",
+      "branch": "pr/109-tax-half-up",
+      "title": "Tax rounding uses half-up",
+      "description": "tax_cents rounds halves up: 5c @50% yields 3c instead of banker's 2c.",
+      "file": "src/tax.rs",
+      "find": "    let net = net_subtotal_cents.max(0) as u64;\n    mul_bps_round_even(net, rate_bps.max(0) as u64) as i64",
+      "replace": "    // BUG(PR-109): rounds halves UP, breaking banker's rounding.\n    let net = net_subtotal_cents.max(0) as u64;\n    let product = net * rate_bps.max(0) as u64;\n    let q = product / 10_000;\n    let r = (product % 10_000) as u64;\n    (q + u64::from(r >= 5_000)) as i64"
+    },
+    {
+      "label": "110",
+      "slug": "free-threshold-inverted",
+      "branch": "pr/110-free-threshold-inverted",
+      "title": "Free-shipping threshold inverted",
+      "description": "is_free() requires weight ABOVE the threshold instead of at-or-below, so eligible orders pay shipping.",
+      "file": "src/shipping.rs",
+      "find": "    order_cents >= 10_000 && weight_g <= FREE_THRESHOLD_GRAMS",
+      "replace": "    // BUG(PR-110): threshold comparison inverted.\n    order_cents >= 10_000 && weight_g > FREE_THRESHOLD_GRAMS"
+    },
+    {
+      "label": "111",
+      "slug": "per-kg-floor",
+      "branch": "pr/111-per-kg-floor",
+      "title": "Per-kg surcharge floors instead of ceiling",
+      "description": "weight_based_cents(1001) returns 250 instead of 500 — started kilograms must be charged.",
+      "file": "src/shipping.rs",
+      "find": "    let kilos = weight_g.div_ceil(1_000);",
+      "replace": "    let kilos = weight_g / 1_000; // BUG(PR-111): floors instead of ceiling."
+    },
+    {
+      "label": "112",
+      "slug": "leap-century",
+      "branch": "pr/112-leap-century",
+      "title": "Century years are always leap",
+      "description": "is_leap_year(1900) returns true — the divisible-by-100 rule was dropped.",
+      "file": "src/report.rs",
+      "find": "    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0",
+      "replace": "    // BUG(PR-112): century rule dropped.\n    year % 4 == 0"
+    },
+    {
+      "label": "113",
+      "slug": "quarter-off-by-one",
+      "branch": "pr/113-quarter-off-by-one",
+      "title": "Calendar quarter off by one at edges",
+      "description": "quarter_of_month(3) returns Q2 — bracket edges are wrong (months 3,6,9 shift into the next quarter).",
+      "file": "src/report.rs",
+      "find": "    (((month - 1) / 3) + 1) as u8",
+      "replace": "    // BUG(PR-113): off-by-one at quarter edges.\n    ((month / 3) + 1) as u8"
+    },
+    {
+      "label": "114",
+      "slug": "fiscal-offset-dropped",
+      "branch": "pr/114-fiscal-offset-dropped",
+      "title": "Fiscal-year offset ignored",
+      "description": "fiscal_quarter ignores offset_months: with an April FY start, April must be FQ1 but reports as calendar Q2.",
+      "file": "src/report.rs",
+      "find": "    let idx = (month - 1 + 12 - offset_months % 12) % 12;",
+      "replace": "    let idx = month - 1; // BUG(PR-114): fiscal offset ignored."
+    },
+    {
+      "label": "115",
+      "slug": "available-swapped",
+      "branch": "pr/115-available-swapped",
+      "title": "Availability arguments swapped",
+      "description": "available() returns reserved minus stock (saturated), so every reservation attempt is rejected.",
+      "file": "src/inventory.rs",
+      "find": "    stock.saturating_sub(reserved)",
+      "replace": "    // BUG(PR-115): arguments swapped.\n    reserved.saturating_sub(stock)"
+    },
+    {
+      "label": "116",
+      "slug": "drop-saturation",
+      "branch": "pr/116-drop-saturation",
+      "title": "Availability panics on over-reservation",
+      "description": "available() uses plain subtraction and panics when reserved exceeds stock instead of saturating at zero.",
+      "file": "src/inventory.rs",
+      "find": "    stock.saturating_sub(reserved)",
+      "replace": "    stock - reserved // BUG(PR-116): panics when reserved > stock."
+    },
+    {
+      "label": "117",
+      "slug": "partial-grant",
+      "branch": "pr/117-partial-grant",
+      "title": "Batch partially grants instead of failing",
+      "description": "reserve() grants whatever fits and continues; the contract requires failing the WHOLE batch on the first impossible request.",
+      "file": "src/inventory.rs",
+      "find": "    for &request in requests {\n        if request > left {\n            return Err(InventoryError::Oversell {\n                requested: request,\n                available: left,\n            });\n        }\n        left -= request;\n        granted.push(request);\n    }",
+      "replace": "    // BUG(PR-117): partial grants instead of all-or-nothing.\n    for &request in requests {\n        if request > left {\n            granted.push(left);\n            left = 0;\n        } else {\n            left -= request;\n            granted.push(request);\n        }\n    }"
+    },
+    {
+      "label": "118",
+      "slug": "cap-leg-only",
+      "branch": "pr/118-cap-leg-only",
+      "title": "Cap applied to percentage leg only",
+      "description": "The discount cap limits only the percentage leg before the fixed amount is added: 15%+3.00 with cap 5.00 grants 8.00 instead of 5.00.",
+      "file": "src/discounts.rs",
+      "find": "    let raw = pct + fixed;\n    let capped = raw.min(order.discount_cap_cents.max(0));\n    capped.min(subtotal_cents.max(0))",
+      "replace": "    // BUG(PR-118): cap applied to the pct leg only, then fixed stacked on top.\n    let pct_capped = pct.min(order.discount_cap_cents.max(0));\n    (pct_capped + fixed).min(subtotal_cents.max(0))"
+    },
+    {
+      "label": "119",
+      "slug": "negative-grant",
+      "branch": "pr/119-negative-grant",
+      "title": "Negative fixed discount not clamped",
+      "description": "A negative discount_fixed_cents produces a NEGATIVE grant (order pays extra); grants must clamp to zero.",
+      "file": "src/discounts.rs",
+      "find": "    let fixed = order.discount_fixed_cents.max(0);\n    let raw = pct + fixed;",
+      "replace": "    let fixed = order.discount_fixed_cents; // BUG(PR-119): negatives allowed.\n    let raw = pct + fixed;"
+    },
+    {
+      "label": "120",
+      "slug": "grant-order-violated",
+      "branch": "pr/120-grant-order-violated",
+      "title": "Grant order not preserved",
+      "description": "reserve() returns granted amounts sorted ascending instead of preserving request order ([5,2] comes back as [2,5]).",
+      "file": "src/inventory.rs",
+      "find": "    Ok(granted)",
+      "replace": "    // BUG(PR-120): grant order not preserved.\n    granted.sort_unstable();\n    Ok(granted)"
+    }
+  ]
+}
+
