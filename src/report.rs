@@ -14,7 +14,7 @@ pub fn is_leap_year(year: u32) -> bool {
 /// months OF the fiscal year.
 pub fn fiscal_quarter(month: u32, offset_months: u32) -> u8 {
     assert!((1..=12).contains(&month), "month out of range: {month}");
-    let idx = (month - 1 + 12 - offset_months % 12) % 12;
+    let idx = month - 1; // BUG(PR-114): fiscal offset ignored.
     (idx / 3 + 1) as u8
 }
 
