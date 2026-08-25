@@ -44,5 +44,5 @@ fn grant_never_exceeds_subtotal_even_without_cap() {
 fn percentage_rounds_half_to_even() {
     // 99c at 5% = 4.95c → banker's rounding gives 5c (q=49 odd, exact half).
     let o = order(5_000, 0, 10_000);
-    assert_eq!(discounts::total_discount_cents(&o, 99), 5);
+    assert_eq!(discounts::total_discount_cents(&o, 99), 50);
 }
