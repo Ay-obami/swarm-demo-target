@@ -1,8 +1,8 @@
 # swarm-demo-target
 
-Demo **target repository** for [Swarm CI](https://github.com/Ay-obami/Swarm_CI):
-a small warehouse-domain Rust crate that intentionally carries open "PRs"
-(seeded bug branches). Swarm CI's agents read the failing tests, plan a fix,
+Demo **target repository** for [Phoenix CI](https://github.com/Ay-obami/Swarm_CI):
+a warehouse-domain Rust crate that intentionally carries open "PRs"
+(seeded bug branches). Phoenix CI's agents read the failing tests, plan a fix,
 apply it in a sandbox, and must pass a **real `cargo test`** before the merge
 gate opens.
 
@@ -14,43 +14,58 @@ gate opens.
 | `src/pricing.rs`   | line totals + order subtotal |
 | `src/discounts.rs` | discount stacking policy (pct → fixed → cap) |
 | `src/inventory.rs` | batch stock reservation with oversell protection |
-| `src/report.rs`    | calendar helpers |
+| `src/report.rs`    | calendar quarters, leap years, fiscal-year offsets |
+| `src/tax.rs`       | exclusive sales tax on the net subtotal |
+| `src/shipping.rs`  | tiered shipping, free-shipping threshold, per-kg surcharge |
 
-## Open PRs (seeded bug branches)
+## Open PRs (20 seeded bugs)
 
-Each branch keeps its acceptance tests but breaks one function. The tests are
-the contract — fixing the module turns the branch green.
+Every branch carries its own red acceptance tests — the contract the agents
+must turn green. **Copyable title + bug-description pairs for all 20 live in
+[OPEN_PRS.md](OPEN_PRS.md)**; the machine-readable catalog is `prs.json`.
 
-| PR ref (`refs/pull/N/head`) | Branch | Bug |
-|---|---|---|
-| `refs/pull/101/head` | `pr/101-discount-stack` | discount cap ignored when stacking pct + fixed |
-| `refs/pull/102/head` | `pr/102-fx-rounding` | FX conversion truncates to whole units after scaling |
-| `refs/pull/103/head` | `pr/103-oversell-boundary` | batch reservation checks stock instead of remaining availability |
+Branch naming: `pr/<label>-<slug>`; each is also published as the
+pull-request style ref `refs/pull/<label>/head`, which is exactly what
+Phoenix CI fetches when you paste a PR link.
 
-## Pointing Swarm CI at a PR
+Examples:
+
+- `pr/102-fx-rounding` — FX conversion snaps cents to whole units
+  (`convert(999, 12_345)` → 1200 instead of 1233)
+- `pr/110-free-threshold-inverted` — free shipping requires weight ABOVE the
+  threshold instead of at-or-below
+- `pr/117-partial-grant` — batch reservation partially grants instead of
+  failing on the first impossible request
+
+## Pointing Phoenix CI at a PR
 
 ```jsonc
-// POST /tasks
+// POST /tasks   (or paste the link into the dashboard's "PR link" field)
 {
-  "pr_id": "102",
+  "pr_id": "1",
   "title": "FX conversion loses cents",
-  "bug_description": "convert() must apply rate_bps once and preserve cents; tests show 999c @12345bps should be 1233 but we get whole-unit snapping.",
-  "pr_url": "https://github.com/<owner>/swarm-demo-target/pull/102"
+  "bug_description": "convert() must apply rate_bps once and preserve cents; convert(999, 12345) must be 1233 but returns 1200.",
+  "pr_url": "https://github.com/Ay-obami/swarm-demo-target/pull/1"
 }
 ```
 
-Swarm CI derives the clone URL and fetches `refs/pull/102/head` — exactly how
-real GitHub PR heads are addressed. A local path also works for offline demos:
-`"repo_url": "/path/to/repo", "git_ref": "refs/pull/103/head"`.
+Equivalent branch form (works for any pushed branch, no PR object needed):
 
-Sample `bug_description` lines (paste into the dashboard):
+```jsonc
+{ "repo_url": "https://github.com/Ay-obami/swarm-demo-target.git",
+  "git_ref": "pr/110-free-threshold-inverted", "bug_description": "…" }
+```
 
-- **101** — `stacked discounts blow past the cap: subtotal 100.00 with 15% + 3.00 fixed and cap 5.00 grants 18.00 instead of 5.00`
-- **102** — `FX conversion snaps cents to whole units: convert(999, 12_345) returns 1200 instead of 1233`
-- **103** — `batch reservation can oversell: it validates each request against total stock instead of remaining availability, so [3,3,5] on 10 units with 4 reserved succeeds`
+A local filesystem path also works as `repo_url` for fully offline demos.
 
-## Rebuilding the PR refs locally
+## Rebuilding / re-seeding the catalog
 
 ```bash
-scripts/setup_prs.sh        # seeds branches + refs/pull/{101,102,103}/head
+python3 scripts/seed_prs.py --remote origin --repo Ay-obami/swarm-demo-target
+# add --no-open-prs for branches only; REMOTE="." style local refs via git update-ref
 ```
+
+The seeder force-updates the seeded branches (they're re-derived from green
+`main` + the patch table inside `prs.json`), pushes them, opens fresh GitHub
+PRs, closes stale ones, and regenerates `OPEN_PRS.md`.
+
