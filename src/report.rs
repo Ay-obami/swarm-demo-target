@@ -6,7 +6,8 @@ pub fn quarter_of_month(month: u32) -> u8 {
 }
 
 pub fn is_leap_year(year: u32) -> bool {
-    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+    // BUG(PR-112): century rule dropped.
+    year % 4 == 0
 }
 
 /// Fiscal quarter when the fiscal year starts `offset_months` after January
