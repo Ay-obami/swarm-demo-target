@@ -8,7 +8,7 @@ pub fn total_discount_cents(order: &Order, subtotal_cents: i64) -> i64 {
     let subtotal = subtotal_cents.max(0) as u64;
     let pct =
         mul_bps_round_even(subtotal, order.discount_pct_bps.max(0) as u64) as i64;
-    let fixed = order.discount_fixed_cents.max(0);
+    let fixed = order.discount_fixed_cents; // BUG(PR-119): negatives allowed.
     let raw = pct + fixed;
     let capped = raw.min(order.discount_cap_cents.max(0));
     capped.min(subtotal_cents.max(0))
