@@ -15,7 +15,9 @@ pub fn mul_bps_round_even(amount: u64, bps: u64) -> u64 {
 }
 
 /// Convert an amount into another currency at `rate_bps`
-/// (e.g. 11_250 bps = 1.125×). Cents precision is preserved exactly.
+/// (e.g. 11_250 bps = 1.125×).
 pub fn convert(amount: u64, rate_bps: u64) -> u64 {
-    mul_bps_round_even(amount, rate_bps)
+    let converted = mul_bps_round_even(amount, rate_bps);
+    // BUG(PR-102): snapping to whole major units destroys cents precision.
+    (converted / 100) * 100
 }
