@@ -19,6 +19,6 @@ pub fn is_free(order_cents: i64, weight_g: u32) -> bool {
 
 /// Per-kilo surcharge: 250c per started kilogram (ceiling).
 pub fn weight_based_cents(weight_g: u32) -> i64 {
-    let kilos = weight_g.div_ceil(1_000);
+    let kilos = weight_g / 1_000; // BUG(PR-111): floors instead of ceiling.
     kilos as i64 * 250
 }
