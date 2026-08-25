@@ -14,7 +14,8 @@ pub fn shipping_cents(weight_g: u32) -> i64 {
 }
 
 pub fn is_free(order_cents: i64, weight_g: u32) -> bool {
-    order_cents >= 10_000 && weight_g <= FREE_THRESHOLD_GRAMS
+    // BUG(PR-110): threshold comparison inverted.
+    order_cents >= 10_000 && weight_g > FREE_THRESHOLD_GRAMS
 }
 
 /// Per-kilo surcharge: 250c per started kilogram (ceiling).
