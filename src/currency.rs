@@ -17,6 +17,5 @@ pub fn mul_bps_round_even(amount: u64, bps: u64) -> u64 {
 /// Convert an amount into another currency at `rate_bps`
 /// (e.g. 11_250 bps = 1.125×). Cents precision is preserved exactly.
 pub fn convert(amount: u64, rate_bps: u64) -> u64 {
-    // BUG(PR-106): hidden flat conversion fee.
-    mul_bps_round_even(amount, rate_bps) + 50
+    mul_bps_round_even(amount, rate_bps)
 }
